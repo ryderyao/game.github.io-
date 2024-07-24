@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>高級記憶配對遊戲</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap');
+
+        :root {
+            --card-size: 80px;
+            --card-font-size: 2rem;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: #fff;
+            padding: 10px;
+        }
+
+        .game-container {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 15px;
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+            backdrop-filter: blur(4px);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            width: 100%;
+            max-width: 500px;
+        }
+
+        h1 {
+            margin-top: 0;
+            font-size: 1.5em;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+            text-align: center;
+        }
+
+        .game-board {
+            display: grid;
+            gap: 5px;
+            margin-top: 15px;
+            perspective: 1000px;
+            justify-content: center;
+        }
+
+        .card {
+            width: var(--card-size);
+            height: var(--card-size);
+            position: relative;
+            transform-style: preserve-3d;
+            transition: transform 0.6s;
+            cursor: pointer;
+        }
+
+        .card.flipped {
+            transform: rotateY(180deg);
+        }
+
+        .card-front, .card-back {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            backface-visibility: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: var(--card-font-size);
+            border-radius: 5px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+
+        .card-front {
+            background: linear-gradient(45deg, #FF6B6B, #4ECDC4);
+            transform: rotateY(180deg);
+        }
+
+        .card-back {
+            background: linear-gradient(45deg, #45B649, #DCE35B);
+        }
+
+        .controls {
+            margin-top: 15px;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+        }
+
+        select, button {
+            padding: 8px;
+            border: none;
+            border-radius: 5px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            flex-grow: 1;
+        }
+
+        select {
+            background-color: #4ECDC4;
+            color: white;
+        }
+
+        button {
+            background-color: #FF6B6B;
+            color: white;
+        }
+
+        button:hover, select:hover {
+            opacity: 0.9;
+            transform: translateY(-2px);
+        }
+
+        #game-info {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            margin-top: 15px;
+            font-size: 0.9em;
+            gap: 5px;
+        }
+
+        .info-item {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 8px;
+            border-radius: 5px;
+            display: flex;
+            align-items: center;
+            flex-grow: 1;
+            justify-content: center;
+        }
+
+        .info-item i {
+            margin-right: 5px;
+            font-size: 1em;
+        }
+
+        #high-score {
+            text-align: center;
+            margin-top: 15px;
+            font-size: 1em;
+            font-weight: bold;
+        }
+
+        @keyframes celebrate {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        .celebrate {
+            animation: celebrate 0.5s ease-in-out 3;
+        }
+
+        @media (max-width: 400px) {
+            .controls {
+                flex-direction: column;
+            }
+
+            select, button {
+                width: 100%;
+            }
+        }
+    </style>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css">
+</head>
+<body>
+    <div class="game-container">
+        <h1>高級記憶配對遊戲</h1>
+        <div class="controls">
+            <select id="difficulty">
+                <option value="easy">簡單 (4x4)</option>
+                <option value="hard">困難 (8x8)</option>
+            </select>
+            <select id="theme">
+                <option value="emoji">表情符號</option>
+                <option value="animals">動物</option>
+                <option value="fruits">水果</option>
+            </select>
+            <button id="start-game">開始遊戲</button>
+        </div>
+        <div id="game-info">
+            <div class="info-item">
+                <i class="fas fa-clock"></i>
+                <span id="timer">0</span> 秒
+            </div>
+            <div class="info-item">
+                <i class="fas fa-star"></i>
+                <span id="score">0</span> 分
+            </div>
+            <div class="info-item">
+                <i class="fas fa-redo-alt"></i>
+                <span id="moves">0</span> 步
+            </div>
+        </div>
+        <div id="high-score">最高分: <span id="high-score-value">0</span></div>
+        <div class="game-board" id="game-board"></div>
+    </div>
+
+    <script>
+        const gameBoard = document.getElementById('game-board');
+        const startButton = document.getElementById('start-game');
+        const difficultySelect = document.getElementById('difficulty');
+        const themeSelect = document.getElementById('theme');
+        const timerDisplay = document.getElementById('timer');
+        const scoreDisplay = document.getElementById('score');
+        const movesDisplay = document.getElementById('moves');
+        const highScoreDisplay = document.getElementById('high-score-value');
+
+        let cards = [];
+        let flippedCards = [];
+        let matchedPairs = 0;
+        let score = 0;
+        let moves = 0;
+        let timer;
+        let seconds = 0;
+        let gameSize = 16;
+        let highScore = 0;
+
+        const themes = {
+            emoji: ['😀', '😎', '🥳', '😍', '🤔', '😴', '🤯', '🥶', '🥵', '🤠', '👻', '👽', '🤖', '🎃', '🦄', '🐲', '🌈', '🍕', '🍔', '🍦', '🍭', '🍫', '🍿', '🥤', '🎮', '🎧', '📱', '💻', '🚀', '🌟', '🎨', '🏆'],
+            animals: ['🐶', '🐱', '🐭', '🐹', '🐰', '🦊', '🐻', '🐼', '🐨', '🐯', '🦁', '🐮', '🐷', '🐸', '🐵', '🐔', '🐧', '🐦', '🦆', '🦅', '🦉', '🦇', '🐺', '🐗', '🐴', '🦄', '🐝', '🐛', '🦋', '🐌', '🐞', '🐜'],
+            fruits: ['🍎', '🍐', '🍊', '🍋', '🍌', '🍉', '🍇', '🍓', '🍒', '🍑', '🥭', '🍍', '🥥', '🥝', '🍅', '🍆', '🥑', '🥦', '🥒', '🌽', '🥕', '🧄', '🧅', '🥔', '🍠', '🥐', '🥯', '🍞', '🥖', '🥨', '🧀', '🥚']
+        };
+
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+        }
+
+        function setCardSize(difficulty) {
+            const root = document.documentElement;
+            const containerWidth = Math.min(500, window.innerWidth - 30);
+            let cardSize, fontSize;
+            
+            if (difficulty === 'easy') {
+                cardSize = Math.floor(containerWidth / 4) - 5;
+                fontSize = Math.floor(cardSize * 0.6);
+            } else {
+                cardSize = Math.floor(containerWidth / 8) - 5;
+                fontSize = Math.floor(cardSize * 0.4);
+            }
+            
+            root.style.setProperty('--card-size', `${cardSize}px`);
+            root.style.setProperty('--card-font-size', `${fontSize}px`);
+        }
+
+        function createBoard() {
+            gameBoard.innerHTML = '';
+            setCardSize(difficultySelect.value);
+            gameBoard.style.gridTemplateColumns = `repeat(${Math.sqrt(gameSize)}, 1fr)`;
+            cards = [];
+            flippedCards = [];
+            matchedPairs = 0;
+            score = 0;
+            moves = 0;
+            scoreDisplay.textContent = score;
+            movesDisplay.textContent = moves;
+
+            const currentTheme = themes[themeSelect.value];
+            const gameSymbols = currentTheme.slice(0, gameSize / 2);
+            const cardContents = [...gameSymbols, ...gameSymbols];
+            shuffleArray(cardContents);
+
+            for (let i = 0; i < gameSize; i++) {
+                const card = document.createElement('div');
+                card.classList.add('card');
+                card.dataset.value = cardContents[i];
+
+                const cardFront = document.createElement('div');
+                cardFront.classList.add('card-front');
+                cardFront.textContent = cardContents[i];
+
+                const cardBack = document.createElement('div');
+                cardBack.classList.add('card-back');
+                cardBack.textContent = '?';
+
+                card.appendChild(cardFront);
+                card.appendChild(cardBack);
+
+                card.addEventListener('click', flipCard);
+                gameBoard.appendChild(card);
+                cards.push(card);
+            }
+        }
+
+        function flipCard() {
+            if (flippedCards.length < 2 && !this.classList.contains('flipped') && !this.classList.contains('matched')) {
+                this.classList.add('flipped');
+                flippedCards.push(this);
+                moves++;
+                movesDisplay.textContent = moves;
+
+                if (flippedCards.length === 2) {
+                    setTimeout(checkMatch, 500);
+                }
+            }
+        }
+
+        function checkMatch() {
+            const [card1, card2] = flippedCards;
+            if (card1.dataset.value === card2.dataset.value) {
+                card1.classList.add('matched');
+                card2.classList.add('matched');
+                matchedPairs++;
+                score += 10;
+                scoreDisplay.textContent = score;
+
+                if (matchedPairs === gameSize / 2) {
+                    endGame();
+                }
+            } else {
+                card1.classList.remove('flipped');
+                card2.classList.remove('flipped');
+                score = Math.max(0, score - 1);
+                scoreDisplay.textContent = score;
+            }
+            flippedCards = [];
+        }
+
+        function startTimer() {
+            seconds = 0;
+            clearInterval(timer);
+            timer = setInterval(() => {
+                seconds++;
+                timerDisplay.textContent = seconds;
+            }, 1000);
+        }
+
+        function endGame() {
+            clearInterval(timer);
+            if (score > highScore) {
+                highScore = score;
+                highScoreDisplay.textContent = highScore;
+                highScoreDisplay.parentElement.classList.add('celebrate');
+                setTimeout(() => {
+                    highScoreDisplay.parentElement.classList.remove('celebrate');
+                }, 1500);
+            }
+            alert(`恭喜你完成遊戲！\n時間：${seconds} 秒\n步數：${moves}\n分數：${score}`);
+        }
+
+        function startGame() {
+            gameSize = difficultySelect.value === 'easy' ? 16 : 64;
+            createBoard();
+            startTimer();
+        }
+
+        startButton.addEventListener('click', startGame);
+
+        window.addEventListener('resize', () => {
+            setCardSize(difficultySelect.value);
+        });
+
+        // 初始化遊戲
+        setCardSize('easy');
+    </script>
+</body>
+</html>
